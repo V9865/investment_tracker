@@ -88,3 +88,27 @@
     - Negative quantity: flagged as anomaly, excluded from portfolio calculations with warning.
     - Unknown cost (null or zero avg price): cost and unrealized % flagged as incomplete (`null`), currentValue and daily P&L still computed.
     - Stale quote: value shown with STALE badge, excluded from daily P&L.
+
+### 8. Encrypted Storage, Keystore Wrapping & Biometric Lock (Prompt 03)
+- **Date:** 2026-10-21
+- **Library Selection:**
+  - SQLCipher for Android: `net.zetetic:android-database-sqlcipher:4.5.4` with Room `SupportFactory(passphrase)`.
+  - AndroidX Biometric: `androidx.biometric:biometric:1.2.0-alpha05` for `BiometricPrompt.CryptoObject` authentication.
+  - AndroidX Security Crypto: `androidx.security:security-crypto:1.1.0-alpha06`.
+- **Key Architecture:**
+  - A random 256-bit passphrase (`ByteArray(32)`) is generated via `SecureRandom` to encrypt the SQLite database via SQLCipher (`PRAGMA key`).
+  - The raw database passphrase is never stored on disk. It is wrapped (AES-256-GCM) with an Android Keystore key (`investment_tracker_master_key`) configured with:
+    - `setUserAuthenticationRequired(true)`
+    - `setInvalidatedByBiometricEnrollment(true)`
+    - `setUserAuthenticationParameters(0, AUTH_BIOMETRIC_STRONG | AUTH_DEVICE_CREDENTIAL)`
+  - Key unwrapping requires user authentication through `BiometricPrompt.CryptoObject(cipher)`.
+  - When new biometrics are enrolled, Keystore permanently invalidates the wrapping key (`KeyPermanentlyInvalidatedException`), triggering the **fail-closed** state with a "Reset local data & re-sync" option.
+  - In-memory database passphrases are zeroed (`Arrays.fill(passphrase, 0.toByte())`) on database close/relock.
+- **OS Hardening:**
+  - `allowBackup=false` + `data_extraction_rules.xml` excluding cloud and device transfers (`<exclude path="." />`).
+  - `usesCleartextTraffic="false"` in `AndroidManifest.xml`.
+  - `FLAG_SECURE` toggle in `SessionLockManager` to blank task switcher Recents and block screenshots.
+- **Official Sources:**
+  - [Zetetic SQLCipher for Android](https://www.zetetic.net/sqlcipher/)
+  - [Android Keystore System Guidance](https://developer.android.com/privacy-and-security/keystore)
+  - [AndroidX Biometric Reference](https://developer.android.com/jetpack/androidx/releases/biometric)

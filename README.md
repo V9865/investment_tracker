@@ -12,7 +12,13 @@ Everything runs strictly on your phone — **no backend, no VPS, no cloud databa
 - **Consolidated Holdings:** Groups Zerodha and Kotak Neo holdings by `(ISIN, exchange)` without double-counting.
 - **Accurate Financial Calculations:** All monetary arithmetic and quantities use `BigDecimal` with rounding HALF_UP to 2 decimal places on display only (no Double or Float).
 - **Dual Daily P&L Engine:** Snapshot method (primary) and holding-level cross-check method implemented per Section 5 spec.
-- **Hardware-Backed Security:** Encrypted local database (SQLCipher) unlocked via AndroidX `BiometricPrompt` with auth-bound Keystore keys.
+- **Hardware-Backed Encrypted Storage & Biometric Lock:**
+  - Room encrypted with SQLCipher (`net.zetetic:android-database-sqlcipher:4.5.4`).
+  - Random 256-bit DB key wrapped by hardware-backed Android Keystore AES-256-GCM key bound to user authentication (`AUTH_BIOMETRIC_STRONG | AUTH_DEVICE_CREDENTIAL`).
+  - Key unwrapped via `BiometricPrompt.CryptoObject`.
+  - Biometric enrollment change invalidates the key -> app fails closed with "Reset local data & re-sync".
+  - Inactivity/background relock timer and `FLAG_SECURE` screen/recents blanking.
+  - `allowBackup=false`, `data_extraction_rules.xml` excluding all directories, and cleartext traffic disabled.
 - **Multi-Flavor Build:**
   - `demo`: Offline mock mode with simulated fixtures requiring zero broker credentials or accounts.
   - `live`: Secure production mode for on-device broker sync.
@@ -25,7 +31,8 @@ Everything runs strictly on your phone — **no backend, no VPS, no cloud databa
 - **Build System:** Gradle 9.6.0 + Android Gradle Plugin 9.4.1
 - **UI:** Jetpack Compose + Material 3 Design
 - **Dependency Injection:** Dagger Hilt 2.60.1
-- **Storage:** Room Database 2.6.1 + SQLCipher
+- **Storage:** Room Database 2.6.1 + SQLCipher 4.5.4
+- **Biometric Security:** AndroidX Biometric 1.2.0-alpha05 + Android Keystore
 - **Networking:** Retrofit 2.11.0 + OkHttp 4.12.0 + Kotlinx Serialization 1.8.0
 - **Static Analysis & Linting:** Ktlint 14.2.0 + Detekt 1.23.8
 - **Secret Scanning:** Gitleaks CI workflow
@@ -48,6 +55,12 @@ Everything runs strictly on your phone — **no backend, no VPS, no cloud databa
 # Run domain calculations test suite (worked examples & golden tests)
 ./gradlew :domain:test
 
+# Run data security and storage unit tests (lock, timeout, fail-closed)
+./gradlew :data:testDebugUnitTest
+
+# Run on-device SQLCipher encryption instrumentation tests (when device/emulator connected)
+./gradlew connectedDebugAndroidTest
+
 # Check code style with Ktlint
 ./gradlew ktlintCheck
 
@@ -67,5 +80,6 @@ Everything runs strictly on your phone — **no backend, no VPS, no cloud databa
 - Never commit `.env` or keystore files.
 - Refer to [`.env.example`](.env.example) for template configuration.
 - Gitleaks runs on GitHub Actions to continuously verify no secrets enter Git history.
+- Read [`docs/THREAT_NOTE.md`](docs/THREAT_NOTE.md) for the threat model and cryptographic rationale.
 - Read [`docs/DECISIONS.md`](docs/DECISIONS.md) for architectural and tooling decisions.
 - Read [`docs/RECON.md`](docs/RECON.md) for machine environment details.
