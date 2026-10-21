@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Investment Tracker</string>
+    <string name="placeholder_title">Investment Tracker</string>
+    <string name="placeholder_subtitle">Private, Read-Only Portfolio Tracker</string>
+    <string name="placeholder_description">Zerodha + Kotak Neo consolidated holdings with end-of-day daily P&amp;L.</string>
+    <string name="demo_mode_badge">Demo Mode Active</string>
+</resources>
