@@ -112,3 +112,39 @@
   - [Zetetic SQLCipher for Android](https://www.zetetic.net/sqlcipher/)
   - [Android Keystore System Guidance](https://developer.android.com/privacy-and-security/keystore)
   - [AndroidX Biometric Reference](https://developer.android.com/jetpack/androidx/releases/biometric)
+
+### 9. Zerodha Read-Only Adapter Architecture (Prompt 04)
+- **Date:** 2026-10-22
+- **Kite Connect v3 Protocol & Specifications:**
+  - **Base URL:** `https://api.kite.trade`
+  - **Login Flow:** User initiates login via Chrome Custom Tab to `https://kite.zerodha.com/connect/login?v=3&api_key={api_key}`. Upon successful broker authentication, Zerodha redirects with `request_token` query parameter.
+  - **Token Exchange:** `POST /session/token` with parameters `api_key`, `request_token`, and `checksum = SHA-256(api_key + request_token + api_secret)` (lowercase hex).
+  - **Session Headers:**
+    - `X-Kite-Version: 3` (required on all requests)
+    - `Authorization: token {api_key}:{access_token}`
+  - **Token Lifetime:** Active until ~06:00 AM IST of the following day, or until explicit logout. Local validation proactively checks against the 06:00 AM IST cutoff (`Asia/Kolkata` zone).
+  - **Rate Limits:**
+    - Standard portfolio/holdings endpoints: 3 requests per second.
+    - Exceeding the rate limit returns HTTP 429 Too Many Requests (`TooManyRequestsException` or `NetworkException`).
+  - **Session Expiry:** HTTP 403 Forbidden with `error_type: "TokenException"`.
+- **Library Evaluation: `javakiteconnect` vs Plain Retrofit + OkHttp:**
+  - `javakiteconnect` (`com.zerodhatech.kiteconnect:kiteconnect`): Bundles transitive dependencies (Apache Commons, org.json) and exposes order placement, modification, cancellation, position conversion, and fund transfer methods. Including trading methods in a read-only portfolio application introduces unnecessary security and operational risk.
+  - **Decision:** Use plain Retrofit 2.11.0 + OkHttp 4.12.0:
+    - 100% Kotlin Coroutines native (`suspend` functions) and Kotlinx Serialization.
+    - Strict read-only API definition (`KiteApiService` defines ONLY `POST /session/token` and `GET /portfolio/holdings`).
+    - Enforced by `KiteReadOnlyAllowListInterceptor` at the OkHttp network layer: any attempt to execute requests outside the allow-list (e.g. `/orders/*`, `/trades`, `/positions/convert`, `/funds/*`) immediately fails with `KiteForbiddenEndpointException` before touching the network.
+- **On-Device Encrypted Storage:**
+  - `KiteCredentialsRepository`: User enters `api_key` and `api_secret` once during initial setup.
+  - Stored strictly on-device in hardware Keystore-backed `EncryptedSharedPreferences` (`AES256_SIV` keys, `AES256_GCM` values).
+  - Credentials and tokens are NEVER hardcoded in code, APK, Git, logs, or screenshots.
+- **Resilience & Typed Error Mapping:**
+  - `KiteRetryInterceptor`:
+    - HTTP 403: Mapped directly to `KiteSessionExpiredException` without retrying. Automatically invalidates the local session fail-closed and triggers the daily re-login banner.
+    - HTTP 429: Retries idempotent `GET` requests using exponential backoff with randomized jitter (`initialDelayMs = 200ms`, `maxRetries = 3`). Exhaustion throws `KiteRateLimitException`.
+    - Network Timeouts: Retries `GET` requests with backoff+jitter; exhaustion throws `KiteNetworkTimeoutException`.
+- **Mock & Offline Support:**
+  - `MockZerodhaProvider`: Provides illustrative fixtures (INFY, TCS, RELIANCE, SBIN, TATAMOTORS) matching worked examples, with configurable simulated failure modes (`EXPIRED_403`, `RATE_LIMIT_429`, `TIMEOUT`, `EMPTY`) for offline tests and demo flavor.
+- **Official Documentation Sources:**
+  - [Kite Connect v3 User Documentation](https://kite.trade/docs/connect/v3/user/)
+  - [Kite Connect v3 Portfolio Documentation](https://kite.trade/docs/connect/v3/portfolio/)
+  - [Kite Connect v3 Exceptions & Rate Limits](https://kite.trade/docs/connect/v3/exceptions/)

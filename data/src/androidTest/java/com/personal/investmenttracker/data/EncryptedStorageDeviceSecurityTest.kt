@@ -19,7 +19,6 @@ import java.security.SecureRandom
 
 @RunWith(AndroidJUnit4::class)
 class EncryptedStorageDeviceSecurityTest {
-
     private lateinit var context: Context
     private lateinit var dbManager: EncryptedDatabaseManager
     private val testDbName = "device_test_security_encrypted.db"

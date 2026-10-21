@@ -11,12 +11,12 @@ import java.util.Arrays
 
 class DatabaseEncryptionException(
     message: String,
-    cause: Throwable? = null
+    cause: Throwable? = null,
 ) : Exception(message, cause)
 
 class EncryptedDatabaseManager(
     private val context: Context,
-    private val databaseName: String = AppDatabase.DATABASE_NAME
+    private val databaseName: String = AppDatabase.DATABASE_NAME,
 ) : LockableStorage {
     @Volatile
     private var activeDatabase: AppDatabase? = null
@@ -35,15 +35,17 @@ class EncryptedDatabaseManager(
 
             try {
                 // Initialize SQLCipher native libraries
-                net.sqlcipher.database.SQLiteDatabase.loadLibs(context)
+                net.sqlcipher.database.SQLiteDatabase
+                    .loadLibs(context)
 
                 val supportFactory = SupportFactory(passphrase.clone())
                 val db =
-                    Room.databaseBuilder(
-                        context,
-                        AppDatabase::class.java,
-                        databaseName
-                    ).openHelperFactory(supportFactory)
+                    Room
+                        .databaseBuilder(
+                            context,
+                            AppDatabase::class.java,
+                            databaseName,
+                        ).openHelperFactory(supportFactory)
                         .fallbackToDestructiveMigration()
                         .build()
 
@@ -56,12 +58,12 @@ class EncryptedDatabaseManager(
             } catch (e: SQLiteException) {
                 throw DatabaseEncryptionException(
                     "Failed to open encrypted database with provided key",
-                    e
+                    e,
                 )
             } catch (e: IllegalStateException) {
                 throw DatabaseEncryptionException(
                     "Database configuration or state error",
-                    e
+                    e,
                 )
             }
         }

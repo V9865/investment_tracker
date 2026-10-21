@@ -76,6 +76,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.biometric:biometric:1.2.0-alpha05")
+    implementation("androidx.browser:browser:1.8.0")
 
     // Jetpack Compose & Material 3
     implementation(platform("androidx.compose:compose-bom:2025.02.00"))

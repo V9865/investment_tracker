@@ -19,6 +19,13 @@ Everything runs strictly on your phone — **no backend, no VPS, no cloud databa
   - Biometric enrollment change invalidates the key -> app fails closed with "Reset local data & re-sync".
   - Inactivity/background relock timer and `FLAG_SECURE` screen/recents blanking.
   - `allowBackup=false`, `data_extraction_rules.xml` excluding all directories, and cleartext traffic disabled.
+- **Zerodha Kite Connect v3 Read-Only Adapter (Prompt 04):**
+  - Plain Retrofit + OkHttp client strictly constrained to `POST /session/token` and `GET /portfolio/holdings`.
+  - `KiteReadOnlyAllowListInterceptor` rejects any order, trade, modify, cancel, position-conversion, or fund transfer call before hitting the network.
+  - Setup stores `api_key` and `api_secret` solely in Android Keystore-encrypted storage (`EncryptedSharedPreferences`), never in source, APK, or Git.
+  - Authentication via Chrome Custom Tab; exchanges `request_token` with SHA-256 checksum for session `access_token`.
+  - 429 rate limits retried with exponential backoff and randomized jitter; 403 expiration triggers fail-closed local session wipe and daily re-login banner.
+  - `MockZerodhaProvider` supplies realistic offline fixtures for tests and demo mode.
 - **Multi-Flavor Build:**
   - `demo`: Offline mock mode with simulated fixtures requiring zero broker credentials or accounts.
   - `live`: Secure production mode for on-device broker sync.
