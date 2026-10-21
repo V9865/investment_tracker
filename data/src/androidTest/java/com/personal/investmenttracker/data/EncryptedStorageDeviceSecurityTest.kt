@@ -19,6 +19,7 @@ import java.security.SecureRandom
 
 @RunWith(AndroidJUnit4::class)
 class EncryptedStorageDeviceSecurityTest {
+
     private lateinit var context: Context
     private lateinit var dbManager: EncryptedDatabaseManager
     private val testDbName = "device_test_security_encrypted.db"
@@ -62,20 +63,22 @@ class EncryptedStorageDeviceSecurityTest {
         assertFalse(dbManager.isDatabaseOpen())
 
         // 2. Attempt to open with wrong key -> must fail closed with exception
+        val wrongManager = EncryptedDatabaseManager(context, testDbName)
         try {
-            dbManager.openDatabase(wrongKey)
+            wrongManager.openDatabase(wrongKey)
             fail("Opening database with wrong key should throw DatabaseEncryptionException")
         } catch (_: DatabaseEncryptionException) {
             // Expected
         }
 
         // 3. Confirm reopening with correct key succeeds
-        val dbReopened = dbManager.openDatabase(correctKey)
+        val reopenManager = EncryptedDatabaseManager(context, testDbName)
+        val dbReopened = reopenManager.openDatabase(correctKey)
         val listing = dbReopened.listingDao().getByExchangeAndSymbol("NSE", "RELIANCE")
         assertNotNull(listing)
         assertEquals("INE002A01018", listing?.isin)
 
-        dbManager.closeAndLock()
+        reopenManager.closeAndLock()
     }
 
     @Test
