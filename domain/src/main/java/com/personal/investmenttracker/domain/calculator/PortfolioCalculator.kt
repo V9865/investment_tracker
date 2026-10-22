@@ -58,9 +58,9 @@ data class PortfolioSummary(
     val unrealizedPnl: Money,
     val unrealizedPnlPercent: BigDecimal?,
     val dailyPnl: Money,
-    val brokerSubtotals: Map<Broker, BrokerSubtotal>,
-    val consolidatedHoldings: List<ConsolidatedHolding>,
-    val anomalousHoldings: List<Holding>,
+    val brokerSubtotals: Map<Broker, BrokerSubtotal> = emptyMap(),
+    val consolidatedHoldings: List<ConsolidatedHolding> = emptyList(),
+    val anomalousHoldings: List<Holding> = emptyList(),
 )
 
 object PortfolioCalculator {

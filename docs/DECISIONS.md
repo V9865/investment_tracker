@@ -204,4 +204,27 @@
   - [NSE Trading Hours & Regular Session](https://www.nseindia.com/market-data/trading-hours)
   - [Android WorkManager Documentation](https://developer.android.com/topic/libraries/architecture/workmanager)
 
+### 12. Material 3 UI Architecture & Accessibility (Prompt 07)
+- **Date:** 2026-10-22
+- **Indian Rupee Formatting (`InrFormatter`):**
+  - Formats monetary values with standard Indian numbering system digit grouping (e.g., `₹12,34,567.89` where thousands are grouped by 3, and subsequent higher orders by 2 digits).
+  - Uses strictly `BigDecimal` arithmetic and `RoundingMode.HALF_UP` string conversion.
+  - P&L amounts and percentages are always rendered with explicit algebraic sign (`+` / `-`), geometric directional arrow (`▲` / `▼`), and percentage text (`+ ▲ ₹1,250.50 (+3.25%)`). Under WCAG 2.1 AA guidelines, financial status is never conveyed by color alone.
+- **Screen Architecture:**
+  - **DashboardScreen:** Aggregates portfolio totals (`totalCurrentValue`, `totalCostBasis`, `unrealizedPnl`, `dailyPnl`), broker subtotal cards with last sync timestamps and connection status chips, and daily re-login warning banners.
+  - **HoldingsScreen:** Consolidated (grouped by ISIN) vs Broker-level breakdown tabs, sort menu (Portfolio Value, Day P&L, Unrealized P&L, Symbol), per-row day P&L, and data freshness chips (`LIVE (time)`, `DELAYED`, `STALE`, `EOD`, and "Not available from current data source").
+  - **PnlHistoryScreen:** Chronological list of historical EOD snapshots showing closing value, day P&L, net trade cash flow, and completeness badges (`EXACT` vs `ESTIMATED`).
+  - **SettingsScreen:** Session security controls (lock timeout selector, `FLAG_SECURE` window protection toggle, "Lock App Now"), broker disconnect actions, navigation to privacy page, and destructive "Erase Everything & Reset".
+  - **PrivacyScreen:** User-facing privacy and security transparency page explaining the 100% on-device architecture, zero-server / zero-VPS guarantee, and direct-to-broker network calls.
+- **State Handling & Accessibility:**
+  - Standardized UI state containers across screens: `LoadingState`, `EmptyState`, `OfflineBanner`, `StaleBanner`, and `ErrorRetryState`.
+  - Comprehensive TalkBack semantic descriptions (`Modifier.semantics { contentDescription = ... }`) on all metrics, badges, chips, and actions.
+  - Verified layout integrity under 200% font scaling with responsive containers and scrollable viewports.
+- **Separation of Concerns for Destructive Actions:**
+  - Lock now (locks storage and session), broker disconnect (revokes single broker credentials), and erase local data (destroys encrypted SQLite database and master key) are isolated as three distinct actions with explicit confirmation modal dialogs.
+- **Official Documentation Sources:**
+  - [Material Design 3 Android Guidance](https://developer.android.com/develop/ui/compose/designsystems/material3)
+  - [Android Accessibility & Screen Reader Guidelines](https://developer.android.com/guide/topics/ui/accessibility)
+  - [WCAG 2.1 Use of Color Guideline 1.4.1](https://www.w3.org/WAI/WCAG21/Understanding/use-of-color.html)
+
 

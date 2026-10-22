@@ -36,8 +36,17 @@ Everything runs strictly on your phone — **no backend, no VPS, no cloud databa
   - **Canonical Identity:** Resolves holdings to `(ISIN, exchange)`, never by ticker alone.
   - **Sync Orchestrator:** Concurrent per-broker sync with timeouts and partial failure isolation. If one broker fails or times out, the other completes normally, previous good data is retained, and the failed broker is flagged `STALE`.
   - **Quote Caching:** Quotes tagged with source, timestamp, and freshness (`LIVE`, `DELAYED`, `STALE`, `EOD`). Shows "Not available from current data source" when missing.
-  - **End-of-Day Snapshots:** Idempotently captures EOD snapshots after market close (default 15:45 IST, configurable) triggered on app open after close or via best-effort Android `WorkManager` (`EodSyncWorker`).
+- **End-of-Day Snapshots:** Idempotently captures EOD snapshots after market close (default 15:45 IST, configurable) triggered on app open after close or via best-effort Android `WorkManager` (`EodSyncWorker`).
   - **Daily P&L Engine:** Computes primary daily P&L (`today_value - yesterday_snapshot_value - net_trade_cash_flow`) with buy-today tracking and Section 5 cross-check validation; flags estimates with badge `ESTIMATED`.
+- **Material 3 UI & Accessibility Architecture (Prompt 07):**
+  - **Screens:**
+    - **Dashboard:** Portfolio totals, cost basis, unrealized P&L, today's P&L, broker cards with connection status and last sync times, and re-login warning banners.
+    - **Holdings:** Consolidated (grouped by ISIN) vs Broker-level breakdown tabs, multi-criteria sorting (Value, Day P&L, Unrealized P&L, Symbol), per-row day P&L, and data freshness chips.
+    - **P&L History:** Day-by-day historical snapshots showing closing value, P&L, and completeness badges (`EXACT` vs `ESTIMATED`).
+    - **Settings:** Inactivity lock timeout, `FLAG_SECURE` window protection toggle, "Lock App Now", broker disconnect, and local database + key wiping erase action.
+    - **Privacy:** User transparency page detailing 100% on-device execution, direct broker calls, zero tracking/backend/VPS.
+  - **Accessible Formatting:** Indian numbering system digit grouping (`InrFormatter`), P&L displays with algebraic sign + geometric arrow + text percentage (`+ ▲ ₹1,250.50 (+3.25%)`, never color alone), full TalkBack semantics, and 200% font scale compatibility.
+  - **Separation of Concerns:** Lock session, disconnect broker, and erase all local data are three strictly separate actions with dedicated confirmation modals.
 - **Multi-Flavor Build:**
   - `demo`: Offline mock mode with simulated fixtures requiring zero broker credentials or accounts.
   - `live`: Secure production mode for on-device broker sync.

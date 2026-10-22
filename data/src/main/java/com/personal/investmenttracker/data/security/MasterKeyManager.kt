@@ -23,8 +23,14 @@ class MasterKeyManager(
     private val keyAlias: String = MASTER_KEY_ALIAS,
 ) {
     private val keyStore: KeyStore =
-        KeyStore.getInstance(ANDROID_KEYSTORE).apply {
-            load(null)
+        try {
+            KeyStore.getInstance(ANDROID_KEYSTORE).apply {
+                load(null)
+            }
+        } catch (_: Exception) {
+            KeyStore.getInstance(KeyStore.getDefaultType()).apply {
+                load(null)
+            }
         }
 
     private val wrappedKeyFile: File
