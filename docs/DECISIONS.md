@@ -177,3 +177,31 @@
   - [Kotak Neo Trade API Documentation](https://kotakneo.com/platform/kotak-neo-trade-api/)
   - [Kotak Neo API v2 GitHub](https://github.com/Kotak-Neo/Kotak-neo-api-v2)
 
+### 11. Instruments, Multi-Broker Sync Orchestration & EOD Snapshots (Prompt 06)
+- **Date:** 2026-10-22
+- **Canonical Instrument Resolution:**
+  - Identity is strictly enforced as `(ISIN, exchange)`, never by ticker symbol alone.
+  - An ISIN listed on multiple exchanges (e.g. NSE and BSE) maintains distinct `listing` table entries.
+  - Different brokers holding the same `(ISIN, exchange)` resolve cleanly to the same canonical `listing_id`, allowing consolidated views without double-counting.
+- **Quote Caching & Freshness Guarantees:**
+  - Prices originate only from authorized broker quote/holdings responses.
+  - Quotes are cached in `quote_cache` with source, source timestamp, fetch timestamp, and freshness (`LIVE`, `DELAYED`, `STALE`, `EOD`).
+  - Missing quotes gracefully map to null quotes, surfacing "Not available from current data source" in UI without crashing or inventing numbers.
+- **Idempotent Sync Orchestration & Partial Failure Isolation:**
+  - `SyncOrchestrator` runs per-broker fetch operations with configurable timeouts (default 15s).
+  - Partial failure isolation: If one broker fails or times out (e.g. 504 Gateway Timeout or expired session), the other broker proceeds and persists normally.
+  - Failed brokers have their connection status marked as `STALE`, while previously synced holdings in `holding` (`is_current = 1`) are preserved intact.
+  - Re-syncing is completely idempotent: atomic transaction `replaceCurrentHoldings` transitions previous records to `is_current = 0` and inserts new records without duplicates.
+- **End-of-Day Snapshots:**
+  - Configurable market close time with default 15:45 IST (`Asia/Kolkata` zone).
+  - Triggers: User opening the app after market close, plus scheduled background sync via `WorkManager` (`EodSyncWorker`).
+  - Idempotent: Only one snapshot is created per trading day; subsequent calls return existing records rather than duplicating rows.
+- **Section 5 Daily P&L Calculation Engine:**
+  - **Primary Snapshot Formula:** `today_value - yesterday_snapshot_value - net_trade_cash_flow` where buys/sells derive from holding-quantity deltas.
+  - **Cross-Check Formula:** `sum(qty_prev * (close - prev_close)) + sum(qty_bought_today * (close - buy_price))` verified against Section 5 Worked Examples 1, 2 (buy-today), 3, and 4.
+  - Completeness state: If no prior snapshot exists or any holding price is stale/missing, daily P&L is explicitly labeled `ESTIMATED`.
+- **References:**
+  - [NSE Trading Hours & Regular Session](https://www.nseindia.com/market-data/trading-hours)
+  - [Android WorkManager Documentation](https://developer.android.com/topic/libraries/architecture/workmanager)
+
+

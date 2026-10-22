@@ -26,6 +26,18 @@ Everything runs strictly on your phone — **no backend, no VPS, no cloud databa
   - Authentication via Chrome Custom Tab; exchanges `request_token` with SHA-256 checksum for session `access_token`.
   - 429 rate limits retried with exponential backoff and randomized jitter; 403 expiration triggers fail-closed local session wipe and daily re-login banner.
   - `MockZerodhaProvider` supplies realistic offline fixtures for tests and demo mode.
+- **Kotak Neo Read-Only Adapter & File-Import Fallback (Prompt 05):**
+  - Portal-token flow via `trade.kotakneo.com/trade-api` eliminates the need for programmatic TOTP/MPIN entry or static IP.
+  - Hardware Keystore-encrypted credential storage (`EncryptedSharedPreferences`).
+  - Strict network-level read-only allow-list (`KotakReadOnlyAllowListInterceptor`) blocking all order or mutation endpoints.
+  - `KotakFileImportParser` parses CSV/XLSX holdings exports from the Kotak Neo portal directly via Android file picker.
+  - `MockKotakProvider` provides offline fixtures for tests and demo mode.
+- **Instruments, Sync Orchestrator & EOD Snapshots (Prompt 06):**
+  - **Canonical Identity:** Resolves holdings to `(ISIN, exchange)`, never by ticker alone.
+  - **Sync Orchestrator:** Concurrent per-broker sync with timeouts and partial failure isolation. If one broker fails or times out, the other completes normally, previous good data is retained, and the failed broker is flagged `STALE`.
+  - **Quote Caching:** Quotes tagged with source, timestamp, and freshness (`LIVE`, `DELAYED`, `STALE`, `EOD`). Shows "Not available from current data source" when missing.
+  - **End-of-Day Snapshots:** Idempotently captures EOD snapshots after market close (default 15:45 IST, configurable) triggered on app open after close or via best-effort Android `WorkManager` (`EodSyncWorker`).
+  - **Daily P&L Engine:** Computes primary daily P&L (`today_value - yesterday_snapshot_value - net_trade_cash_flow`) with buy-today tracking and Section 5 cross-check validation; flags estimates with badge `ESTIMATED`.
 - **Multi-Flavor Build:**
   - `demo`: Offline mock mode with simulated fixtures requiring zero broker credentials or accounts.
   - `live`: Secure production mode for on-device broker sync.

@@ -26,6 +26,10 @@ class EncryptedDatabaseManager(
 
     fun isDatabaseOpen(): Boolean = activeDatabase?.isOpen == true
 
+    fun getDatabase(): AppDatabase? = activeDatabase
+
+    fun requireDatabase(): AppDatabase = activeDatabase ?: error("Database is locked. User authentication required.")
+
     fun openDatabase(passphrase: ByteArray): AppDatabase {
         synchronized(this) {
             val existing = activeDatabase

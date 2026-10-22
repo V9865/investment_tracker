@@ -22,6 +22,7 @@ enum class Freshness {
     LIVE,
     DELAYED,
     STALE,
+    EOD,
 }
 
 data class Quote(

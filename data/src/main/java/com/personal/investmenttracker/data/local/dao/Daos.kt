@@ -34,8 +34,17 @@ interface ListingDao {
         symbol: String,
     ): ListingEntity?
 
+    @Query("SELECT * FROM listing WHERE isin = :isin AND exchange = :exchange LIMIT 1")
+    fun getByIsinAndExchange(
+        isin: String,
+        exchange: String,
+    ): ListingEntity?
+
     @Query("SELECT * FROM listing WHERE isin = :isin")
     fun getByIsin(isin: String): List<ListingEntity>
+
+    @Query("SELECT * FROM listing WHERE id = :id")
+    fun getById(id: Long): ListingEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(entity: ListingEntity): Long
@@ -46,8 +55,14 @@ interface HoldingDao {
     @Query("SELECT * FROM holding WHERE is_current = 1")
     fun getCurrentHoldings(): Flow<List<HoldingEntity>>
 
+    @Query("SELECT * FROM holding WHERE is_current = 1")
+    fun getCurrentHoldingsSync(): List<HoldingEntity>
+
     @Query("SELECT * FROM holding WHERE is_current = 1 AND broker = :broker")
     fun getCurrentHoldingsByBroker(broker: String): Flow<List<HoldingEntity>>
+
+    @Query("SELECT * FROM holding WHERE is_current = 1 AND broker = :broker")
+    fun getCurrentHoldingsByBrokerSync(broker: String): List<HoldingEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertAll(holdings: List<HoldingEntity>)
@@ -73,14 +88,26 @@ interface QuoteCacheDao {
     @Query("SELECT * FROM quote_cache WHERE listing_id = :listingId")
     fun getByListingId(listingId: Long): QuoteCacheEntity?
 
+    @Query("SELECT * FROM quote_cache")
+    fun getAll(): List<QuoteCacheEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun upsert(entity: QuoteCacheEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun upsertAll(entities: List<QuoteCacheEntity>)
 }
 
 @Dao
 interface EodSnapshotDao {
     @Query("SELECT * FROM eod_snapshot WHERE date = :date")
     fun getByDate(date: String): List<EodSnapshotEntity>
+
+    @Query("SELECT DISTINCT date FROM eod_snapshot ORDER BY date DESC")
+    fun getDistinctDates(): List<String>
+
+    @Query("SELECT * FROM eod_snapshot ORDER BY date DESC")
+    fun getAll(): Flow<List<EodSnapshotEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertAll(snapshots: List<EodSnapshotEntity>)
@@ -90,6 +117,9 @@ interface EodSnapshotDao {
 interface DailyPnlDao {
     @Query("SELECT * FROM daily_pnl ORDER BY date DESC")
     fun getAll(): Flow<List<DailyPnlEntity>>
+
+    @Query("SELECT * FROM daily_pnl ORDER BY date DESC")
+    fun getAllSync(): List<DailyPnlEntity>
 
     @Query("SELECT * FROM daily_pnl WHERE date = :date")
     fun getByDate(date: String): DailyPnlEntity?
