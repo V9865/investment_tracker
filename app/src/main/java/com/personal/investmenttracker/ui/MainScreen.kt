@@ -163,6 +163,7 @@ private fun MainContent(
                             onLockTimeoutChange = actions.onLockTimeoutChange,
                             onFlagSecureToggle = actions.onFlagSecureToggle,
                             onLockNow = actions.onLockClick,
+                            onConnectBroker = actions.onReconnectBroker,
                             onDisconnectBroker = actions.onDisconnectBroker,
                             onEraseAllData = actions.onEraseAllData,
                             onNavigateToPrivacy = onShowPrivacy,

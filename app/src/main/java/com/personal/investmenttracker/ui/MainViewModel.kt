@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.personal.investmenttracker.data.broker.kotak.KotakCredentialsRepository
 import com.personal.investmenttracker.data.broker.zerodha.KiteCredentialsRepository
+import com.personal.investmenttracker.data.broker.zerodha.ZerodhaPortfolioProvider
 import com.personal.investmenttracker.data.local.AppDatabase
+import com.personal.investmenttracker.data.security.LockState
 import com.personal.investmenttracker.data.security.MasterKeyManager
 import com.personal.investmenttracker.data.security.SessionLockManager
 import com.personal.investmenttracker.data.sync.SyncOrchestrator
@@ -29,10 +31,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.io.InputStream
 import java.math.BigDecimal
 import javax.inject.Inject
 
 @HiltViewModel
+@Suppress("TooManyFunctions")
 class MainViewModel
     @Inject
     @Suppress("LongParameterList")
@@ -44,12 +48,15 @@ class MainViewModel
         private val kiteCredentialsRepo: KiteCredentialsRepository,
         private val kotakCredentialsRepo: KotakCredentialsRepository,
         private val database: AppDatabase,
+        private val zerodhaProvider: ZerodhaPortfolioProvider,
     ) : ViewModel() {
         private val isSyncingState = MutableStateFlow(false)
         private val syncErrorState = MutableStateFlow<String?>(null)
         private val viewModeState = MutableStateFlow(HoldingsViewMode.CONSOLIDATED)
         private val sortOptionState = MutableStateFlow(HoldingsSortOption.VALUE_DESC)
         private val flagSecureState = MutableStateFlow(sessionLockManager.isFlagSecureEnabled)
+
+        val lockState: StateFlow<LockState> = sessionLockManager.lockState
 
         val dashboardState: StateFlow<DashboardUiState> =
             combine(
@@ -224,6 +231,64 @@ class MainViewModel
         fun setFlagSecure(enabled: Boolean) {
             sessionLockManager.setFlagSecure(enabled)
             flagSecureState.value = enabled
+        }
+
+        fun onUserAuthenticated() {
+            sessionLockManager.onUserAuthenticated()
+        }
+
+        fun onUserInteraction() {
+            sessionLockManager.onUserInteraction()
+        }
+
+        fun onAppBackgrounded() {
+            sessionLockManager.onAppBackgrounded()
+        }
+
+        fun getZerodhaApiKey(): String? = kiteCredentialsRepo.getApiKey()
+
+        fun getZerodhaApiSecret(): String? = kiteCredentialsRepo.getApiSecret()
+
+        fun saveZerodhaCredentials(
+            apiKey: String,
+            apiSecret: String,
+        ) {
+            kiteCredentialsRepo.saveCredentials(apiKey, apiSecret)
+        }
+
+        fun exchangeZerodhaToken(
+            tokenOrUrl: String,
+            onResult: (Result<Unit>) -> Unit = {},
+        ) {
+            viewModelScope.launch {
+                val result = zerodhaProvider.exchangeToken(tokenOrUrl)
+                if (result.isSuccess) {
+                    syncAll()
+                }
+                onResult(result)
+            }
+        }
+
+        fun getKotakAccessToken(): String? = kotakCredentialsRepo.getAccessToken()
+
+        fun getKotakSid(): String? = kotakCredentialsRepo.getSid()
+
+        fun saveKotakCredentials(
+            accessToken: String,
+            sid: String?,
+        ) {
+            kotakCredentialsRepo.saveCredentials(accessToken = accessToken, sid = sid)
+            syncAll()
+        }
+
+        fun importKotakFile(
+            inputStream: InputStream,
+            onResult: (com.personal.investmenttracker.data.sync.BrokerSyncResult) -> Unit = {},
+        ) {
+            viewModelScope.launch {
+                val result = syncOrchestrator.importKotakFile(inputStream)
+                onResult(result)
+            }
         }
 
         fun disconnectBroker(broker: Broker) {

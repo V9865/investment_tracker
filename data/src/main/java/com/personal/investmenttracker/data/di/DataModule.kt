@@ -2,11 +2,11 @@ package com.personal.investmenttracker.data.di
 
 import android.content.Context
 import androidx.room.Room
+import com.personal.investmenttracker.data.broker.kotak.DelegatingKotakPortfolioProvider
 import com.personal.investmenttracker.data.broker.kotak.KotakCredentialsRepository
 import com.personal.investmenttracker.data.broker.kotak.KotakPortfolioProvider
-import com.personal.investmenttracker.data.broker.kotak.MockKotakProvider
+import com.personal.investmenttracker.data.broker.zerodha.DelegatingZerodhaPortfolioProvider
 import com.personal.investmenttracker.data.broker.zerodha.KiteCredentialsRepository
-import com.personal.investmenttracker.data.broker.zerodha.MockZerodhaProvider
 import com.personal.investmenttracker.data.broker.zerodha.ZerodhaPortfolioProvider
 import com.personal.investmenttracker.data.local.AppDatabase
 import com.personal.investmenttracker.data.security.EncryptedDatabaseManager
@@ -34,11 +34,13 @@ object DataModule {
 
     @Provides
     @Singleton
-    fun provideZerodhaPortfolioProvider(): ZerodhaPortfolioProvider = MockZerodhaProvider()
+    fun provideZerodhaPortfolioProvider(credentialsRepo: KiteCredentialsRepository): ZerodhaPortfolioProvider =
+        DelegatingZerodhaPortfolioProvider(credentialsRepo)
 
     @Provides
     @Singleton
-    fun provideKotakPortfolioProvider(): KotakPortfolioProvider = MockKotakProvider()
+    fun provideKotakPortfolioProvider(credentialsRepo: KotakCredentialsRepository): KotakPortfolioProvider =
+        DelegatingKotakPortfolioProvider(credentialsRepo)
 
     @Provides
     @Singleton

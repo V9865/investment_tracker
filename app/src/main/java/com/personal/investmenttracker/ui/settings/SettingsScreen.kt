@@ -83,6 +83,7 @@ fun SettingsScreen(
 
             BrokerConnectionsCard(
                 state = state,
+                onConnectBroker = actions.onConnectBroker,
                 onSelectDisconnect = { brokerToDisconnect = it },
             )
 
@@ -126,6 +127,7 @@ data class SettingsActions(
     val onLockTimeoutChange: (Int) -> Unit = {},
     val onFlagSecureToggle: (Boolean) -> Unit = {},
     val onLockNow: () -> Unit = {},
+    val onConnectBroker: (Broker) -> Unit = {},
     val onDisconnectBroker: (Broker) -> Unit = {},
     val onEraseAllData: () -> Unit = {},
     val onNavigateToPrivacy: () -> Unit = {},
@@ -206,6 +208,7 @@ private fun SecurityCard(
 @Composable
 private fun BrokerConnectionsCard(
     state: SettingsUiState,
+    onConnectBroker: (Broker) -> Unit,
     onSelectDisconnect: (Broker) -> Unit,
 ) {
     Text(
@@ -226,12 +229,14 @@ private fun BrokerConnectionsCard(
             BrokerConnectionRow(
                 brokerName = "Zerodha Kite",
                 isConnected = state.isZerodhaConnected,
+                onConnect = { onConnectBroker(Broker.ZERODHA) },
                 onDisconnect = { onSelectDisconnect(Broker.ZERODHA) },
             )
             Spacer(modifier = Modifier.height(12.dp))
             BrokerConnectionRow(
                 brokerName = "Kotak Neo",
                 isConnected = state.isKotakConnected,
+                onConnect = { onConnectBroker(Broker.KOTAK_NEO) },
                 onDisconnect = { onSelectDisconnect(Broker.KOTAK_NEO) },
             )
         }
@@ -402,6 +407,7 @@ private fun EraseDialog(
 private fun BrokerConnectionRow(
     brokerName: String,
     isConnected: Boolean,
+    onConnect: () -> Unit,
     onDisconnect: () -> Unit,
 ) {
     Row(
@@ -409,7 +415,7 @@ private fun BrokerConnectionRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = brokerName,
                 fontWeight = FontWeight.SemiBold,
@@ -427,21 +433,45 @@ private fun BrokerConnectionRow(
                 color = subtitleColor,
             )
         }
-        if (isConnected) {
-            OutlinedButton(
-                onClick = onDisconnect,
-                modifier =
-                    Modifier.semantics {
-                        contentDescription = "Disconnect $brokerName"
-                    },
-            ) {
-                Icon(
-                    imageVector = Icons.Default.LinkOff,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(modifier = Modifier.padding(start = 4.dp))
-                Text("Disconnect", fontSize = 12.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (isConnected) {
+                OutlinedButton(
+                    onClick = onConnect,
+                    modifier =
+                        Modifier
+                            .padding(end = 8.dp)
+                            .semantics {
+                                contentDescription = "Re-authenticate $brokerName"
+                            },
+                ) {
+                    Text("Re-auth", fontSize = 12.sp)
+                }
+
+                OutlinedButton(
+                    onClick = onDisconnect,
+                    modifier =
+                        Modifier.semantics {
+                            contentDescription = "Disconnect $brokerName"
+                        },
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LinkOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(modifier = Modifier.padding(start = 4.dp))
+                    Text("Disconnect", fontSize = 12.sp)
+                }
+            } else {
+                Button(
+                    onClick = onConnect,
+                    modifier =
+                        Modifier.semantics {
+                            contentDescription = "Connect $brokerName"
+                        },
+                ) {
+                    Text("Connect", fontSize = 12.sp)
+                }
             }
         }
     }
