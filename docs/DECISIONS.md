@@ -148,3 +148,32 @@
   - [Kite Connect v3 User Documentation](https://kite.trade/docs/connect/v3/user/)
   - [Kite Connect v3 Portfolio Documentation](https://kite.trade/docs/connect/v3/portfolio/)
   - [Kite Connect v3 Exceptions & Rate Limits](https://kite.trade/docs/connect/v3/exceptions/)
+
+### 10. Kotak Neo Read-Only Adapter & File-Import Architecture (Prompt 05)
+- **Date:** 2026-10-22
+- **Kotak Neo API SDK & Portal Evaluation:**
+  - **SDK Repositories Inspected:**
+    - `Kotak-Neo/Kotak-neo-api-v2` (`neo_api_client` v2.0.2): Current official API client.
+    - `Kotak-Neo/kotak-neo-api` (v1 `gw-napi`): Deprecated legacy gateway.
+  - **Portal Token Flow (`trade.kotakneo.com/trade-api`):**
+    - Users can generate and copy their API Access Token / session credentials directly from the Kotak Neo Trade API portal (`https://trade.kotakneo.com/trade-api`).
+    - Eliminates the need for programmatic TOTP/MPIN entry or handling inside the app.
+    - No static IP requirement for read-only portfolio holdings retrieval.
+- **On-Device Encrypted Storage:**
+  - `KotakCredentialsRepository`: Stores `access_token`, `sid`, and `consumer_key` in hardware Keystore-backed `EncryptedSharedPreferences` (`AES256_SIV` keys, `AES256_GCM` values).
+  - TOTP and MPIN are never handled, stored, or logged.
+- **Read-Only Invariant Enforcement:**
+  - `KotakReadOnlyAllowListInterceptor` enforces that only `GET /portfolio/holdings` and read-only portfolio queries are allowed at the OkHttp network level.
+  - Any request to order placement, AMO, order modification, cancellation, position conversion, or fund transfer endpoints throws `KotakForbiddenEndpointException` before touching the network.
+- **Robust File Import Fallback (`KotakFileImportParser`):**
+  - Parses CSV and TSV portfolio exports directly from Kotak Neo web and app portals.
+  - Dynamic header index matching for `ISIN`, `Symbol` / `Scrip`, `Exchange` (NSE/BSE), `Quantity`, `Average Price` / `Buy Avg`, `LTP`, and `Close Price` / `Prev Close`.
+  - Resilient against broker export metadata/disclaimer header rows, currency symbols (`₹`, `Rs.`, `Rs`), commas, and quotes.
+  - Translates rows into pure domain `Holding` and `Quote` pairs with `BigDecimal` arithmetic only.
+- **Mock & Offline Support:**
+  - `MockKotakProvider`: Delivers Section 5 worked example 4 holdings (SBIN: 5 @ 110.00, price 120.00; HDFCBANK; ITC) and supports simulated failure modes (`SUCCESS`, `EXPIRED`, `EMPTY`), alongside full file-import parsing.
+- **Official Documentation Sources:**
+  - [Kotak Neo Trade API Portal](https://trade.kotakneo.com/trade-api)
+  - [Kotak Neo Trade API Documentation](https://kotakneo.com/platform/kotak-neo-trade-api/)
+  - [Kotak Neo API v2 GitHub](https://github.com/Kotak-Neo/Kotak-neo-api-v2)
+
