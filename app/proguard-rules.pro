@@ -17,7 +17,10 @@
 -dontwarn net.sqlcipher.**
 
 # 3. Preserve Room database & DAOs
--keep class * extends androidx.room.RoomDatabase
+-keep class * extends androidx.room.RoomDatabase {
+    public <init>();
+    public <init>(...);
+}
 -dontwarn androidx.room.paging.**
 
 # 4. Preserve Kotlinx Serialization models
@@ -35,4 +38,12 @@
 -keep class androidx.security.crypto.** { *; }
 -dontwarn com.google.errorprone.annotations.**
 -dontwarn javax.annotation.**
+
+# 6. Preserve AndroidX WorkManager
+-keep class androidx.work.** { *; }
+-keep class androidx.work.impl.** { *; }
+-keep class androidx.work.impl.WorkDatabase_Impl {
+    public <init>();
+}
+
 
