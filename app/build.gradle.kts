@@ -23,9 +23,32 @@ android {
         }
     }
 
+    val defaultKeystore = "${System.getProperty("user.home")}/.android/investment_tracker_release.jks"
+    val keystorePath = System.getenv("RELEASE_STORE_FILE") ?: defaultKeystore
+    val keystorePassword = System.getenv("RELEASE_STORE_PASSWORD") ?: "investment_tracker_release_pass"
+    val keyAliasVal = System.getenv("RELEASE_KEY_ALIAS") ?: "investment_tracker_release_key"
+    val keyPasswordVal = System.getenv("RELEASE_KEY_PASSWORD") ?: "investment_tracker_release_pass"
+
+    signingConfigs {
+        create("release") {
+            val keyFile = file(keystorePath)
+            if (keyFile.exists()) {
+                storeFile = keyFile
+                storePassword = keystorePassword
+                keyAlias = keyAliasVal
+                keyPassword = keyPasswordVal
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            val releaseSigning = signingConfigs.findByName("release")
+            if (releaseSigning?.storeFile?.exists() == true) {
+                signingConfig = releaseSigning
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

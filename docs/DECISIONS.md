@@ -227,4 +227,27 @@
   - [Android Accessibility & Screen Reader Guidelines](https://developer.android.com/guide/topics/ui/accessibility)
   - [WCAG 2.1 Use of Color Guideline 1.4.1](https://www.w3.org/WAI/WCAG21/Understanding/use-of-color.html)
 
+### 13. Audit & Release Engineering (Prompt 08)
+- **Date:** 2026-10-22
+- **Keystore Separation:**
+  - In accordance with production security invariants, the release signing keystore is created and maintained strictly **OUTSIDE** the git repository (`C:\Users\Varshith Tadiparthi\.android\investment_tracker_release.jks`).
+  - Gradle signing configuration dynamically pulls credentials via environment variables (`RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`) with secure fallback for local build convenience.
+- **R8 ProGuard & Logging Policy:**
+  - `isMinifyEnabled = true` and `isShrinkResources = true` enabled on release builds.
+  - ProGuard rules actively strip all `android.util.Log` invocations (`v`, `d`, `i`, `w`, `e`, `println`) to guarantee zero internal runtime logs or stack traces leak into production binaries.
+  - Kept rules preserve SQLCipher, Room, and Kotlinx Serialization data transfer objects.
+- **OS Hardening & Data Protection:**
+  - `usesCleartextTraffic="false"` explicitly enforced in manifest.
+  - Exported components restricted strictly to `MainActivity` with `MAIN`/`LAUNCHER` intent filters; all internal components remain unexported.
+  - `allowBackup="false"` and `data_extraction_rules.xml` exclude `root`, `file`, `database`, and `sharedpref` domains from both cloud backup and device-to-device migration.
+- **Verification & Acceptance:**
+  - Android Lint (`lintDemoRelease`, `lintLiveRelease`) completed with 0 errors.
+  - Git history and compiled APK bytecode scanned with 0 secrets found.
+  - Full Section 8 compliance documented in `docs/final-report.md`.
+- **Official Documentation Sources:**
+  - [Android App Signing Guidance](https://developer.android.com/studio/publish/app-signing)
+  - [R8 Code Shrinking & Obfuscation](https://developer.android.com/build/shrink-code)
+  - [Data Extraction Rules Reference](https://developer.android.com/guide/topics/data/autobackup#xml-syntax)
+
+
 

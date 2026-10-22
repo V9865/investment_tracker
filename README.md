@@ -98,16 +98,20 @@ Everything runs strictly on your phone — **no backend, no VPS, no cloud databa
 # Run unit tests for demo flavor
 ./gradlew testDemoDebugUnitTest
 
-# Assemble demo debug APK
-./gradlew assembleDemoDebug
+# Run Android Lint on release targets
+./gradlew lintDemoRelease lintLiveRelease
+
+# Assemble signed, minified release APKs (R8 log stripping enabled)
+./gradlew assembleDemoRelease assembleLiveRelease
 ```
 
 ---
 
-## Security & Secrets
-- Never commit `.env` or keystore files.
+## Security, Audits & Verification
+- Never commit `.env` or keystore files. Keystore is maintained strictly outside the repository.
 - Refer to [`.env.example`](.env.example) for template configuration.
 - Gitleaks runs on GitHub Actions to continuously verify no secrets enter Git history.
+- Read [`docs/final-report.md`](docs/final-report.md) for the complete Section 8 compliance matrix (R1–R14: PASS) and final audit evidence.
 - Read [`docs/THREAT_NOTE.md`](docs/THREAT_NOTE.md) for the threat model and cryptographic rationale.
 - Read [`docs/DECISIONS.md`](docs/DECISIONS.md) for architectural and tooling decisions.
 - Read [`docs/RECON.md`](docs/RECON.md) for machine environment details.
