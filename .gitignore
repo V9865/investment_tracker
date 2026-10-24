@@ -50,6 +50,15 @@ captures/
 *.key
 signing.properties
 
+# User financial statements & export data
+*.csv
+*.tsv
+*.xlsx
+*.xls
+app/src/main/assets/*.csv
+app/src/main/assets/*.tsv
+app/src/main/assets/*.xlsx
+
 # OS files
 .DS_Store
 Thumbs.db

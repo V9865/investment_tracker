@@ -34,13 +34,27 @@ object DataModule {
 
     @Provides
     @Singleton
-    fun provideZerodhaPortfolioProvider(credentialsRepo: KiteCredentialsRepository): ZerodhaPortfolioProvider =
-        DelegatingZerodhaPortfolioProvider(credentialsRepo)
+    fun provideZerodhaPortfolioProvider(
+        @ApplicationContext context: Context,
+        credentialsRepo: KiteCredentialsRepository,
+    ): ZerodhaPortfolioProvider {
+        val isDemoMode = context.packageName.endsWith(".demo")
+        return DelegatingZerodhaPortfolioProvider(credentialsRepo, isDemoMode = isDemoMode)
+    }
 
     @Provides
     @Singleton
-    fun provideKotakPortfolioProvider(credentialsRepo: KotakCredentialsRepository): KotakPortfolioProvider =
-        DelegatingKotakPortfolioProvider(credentialsRepo)
+    fun provideKotakPortfolioProvider(
+        @ApplicationContext context: Context,
+        credentialsRepo: KotakCredentialsRepository,
+    ): KotakPortfolioProvider {
+        val isDemoMode = context.packageName.endsWith(".demo")
+        return DelegatingKotakPortfolioProvider(
+            context = context,
+            credentialsRepo = credentialsRepo,
+            isDemoMode = isDemoMode,
+        )
+    }
 
     @Provides
     @Singleton
@@ -53,8 +67,9 @@ object DataModule {
             return existing
         }
         return Room
-            .inMemoryDatabaseBuilder(context, AppDatabase::class.java)
+            .databaseBuilder(context, AppDatabase::class.java, AppDatabase.DATABASE_NAME)
             .allowMainThreadQueries()
+            .fallbackToDestructiveMigration()
             .build()
     }
 }

@@ -32,7 +32,9 @@ import com.personal.investmenttracker.ui.MainScreenActions
 import com.personal.investmenttracker.ui.MainScreenState
 import com.personal.investmenttracker.ui.MainViewModel
 import com.personal.investmenttracker.ui.components.ConnectKotakDialog
+import com.personal.investmenttracker.ui.components.ConnectZerodhaActions
 import com.personal.investmenttracker.ui.components.ConnectZerodhaDialog
+import com.personal.investmenttracker.ui.components.KiteLoginWebViewDialog
 import com.personal.investmenttracker.ui.security.UnlockScreen
 import com.personal.investmenttracker.ui.theme.InvestmentTrackerTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -48,7 +50,11 @@ class MainActivity : FragmentActivity() {
             if (uri != null) {
                 try {
                     contentResolver.openInputStream(uri)?.use { inputStream ->
-                        viewModel.importKotakFile(inputStream) { result ->
+                        val bytes = inputStream.readBytes()
+                        runCatching {
+                            java.io.File(filesDir, "kotak_holdings.csv").writeBytes(bytes)
+                        }
+                        viewModel.importKotakFile(bytes.inputStream()) { result ->
                             runOnUiThread {
                                 val msg =
                                     when (val s = result.status) {
@@ -106,6 +112,13 @@ class MainActivity : FragmentActivity() {
     override fun onUserInteraction() {
         super.onUserInteraction()
         viewModel.onUserInteraction()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) {
+            viewModel.onAppBackgrounded()
+        }
     }
 
     private fun handleRedirectIntent(intent: Intent?) {
@@ -206,7 +219,7 @@ class MainActivity : FragmentActivity() {
 }
 
 @Composable
-@Suppress("LongMethod", "FunctionNaming")
+@Suppress("LongMethod", "FunctionNaming", "CyclomaticComplexMethod")
 private fun MainAppRoot(
     viewModel: MainViewModel,
     onShowBiometrics: () -> Unit,
@@ -223,6 +236,7 @@ private fun MainAppRoot(
     var activeConnectBroker by remember { mutableStateOf<Broker?>(null) }
     var kiteError by remember { mutableStateOf<String?>(null) }
     var isExchangingKite by remember { mutableStateOf(false) }
+    var kiteLoginUrl by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(lockState) {
         if (lockState is LockState.Locked) {
@@ -268,47 +282,73 @@ private fun MainAppRoot(
             ConnectZerodhaDialog(
                 initialApiKey = viewModel.getZerodhaApiKey() ?: "",
                 initialApiSecret = viewModel.getZerodhaApiSecret() ?: "",
-                onDismiss = {
-                    activeConnectBroker = null
-                    kiteError = null
-                },
-                onSaveCredentials = { key, secret ->
-                    viewModel.saveZerodhaCredentials(key, secret)
-                    onShowToast("Zerodha credentials saved")
-                },
-                onOpenLoginUrl = { key ->
-                    val loginUrl = KiteAuthHelper.buildLoginUrl(key)
-                    onOpenCustomTab(loginUrl)
-                },
-                onExchangeToken = { tokenOrUrl ->
-                    isExchangingKite = true
-                    kiteError = null
-                    viewModel.exchangeZerodhaToken(tokenOrUrl) { result ->
-                        isExchangingKite = false
-                        if (result.isSuccess) {
+                actions =
+                    ConnectZerodhaActions(
+                        onDismiss = {
                             activeConnectBroker = null
-                            onShowToast("Zerodha connected successfully!")
-                        } else {
-                            kiteError = result.exceptionOrNull()?.message ?: "Token exchange failed"
-                        }
-                    }
-                },
+                            kiteError = null
+                        },
+                        onSaveCredentials = { key, secret ->
+                            viewModel.saveZerodhaCredentials(key, secret)
+                            onShowToast("Zerodha credentials saved")
+                        },
+                        onOpenInAppLogin = { key ->
+                            kiteLoginUrl = KiteAuthHelper.buildLoginUrl(key)
+                        },
+                        onOpenExternalBrowser = { key ->
+                            val loginUrl = KiteAuthHelper.buildLoginUrl(key)
+                            onOpenCustomTab(loginUrl)
+                        },
+                        onExchangeToken = { tokenOrUrl ->
+                            isExchangingKite = true
+                            kiteError = null
+                            viewModel.exchangeZerodhaToken(tokenOrUrl) { result ->
+                                isExchangingKite = false
+                                if (result.isSuccess) {
+                                    activeConnectBroker = null
+                                    onShowToast("Zerodha connected successfully!")
+                                } else {
+                                    kiteError = result.exceptionOrNull()?.message ?: "Token exchange failed"
+                                }
+                            }
+                        },
+                    ),
                 isExchanging = isExchangingKite,
                 errorMessage = kiteError,
             )
         }
         Broker.KOTAK_NEO -> {
             ConnectKotakDialog(
-                initialAccessToken = viewModel.getKotakAccessToken() ?: "",
-                initialSid = viewModel.getKotakSid() ?: "",
                 onDismiss = { activeConnectBroker = null },
-                onSaveCredentials = { token, sid ->
-                    viewModel.saveKotakCredentials(token, sid)
-                    onShowToast("Kotak credentials saved & syncing")
-                },
                 onLaunchFilePicker = onLaunchKotakFilePicker,
+                onReloadHoldings = {
+                    viewModel.syncKotak()
+                    onShowToast("Reloading Kotak holdings")
+                },
             )
         }
         null -> {}
+    }
+
+    val activeLoginUrl = kiteLoginUrl
+    if (activeLoginUrl != null) {
+        KiteLoginWebViewDialog(
+            loginUrl = activeLoginUrl,
+            onDismiss = { kiteLoginUrl = null },
+            onTokenCaptured = { token ->
+                kiteLoginUrl = null
+                isExchangingKite = true
+                kiteError = null
+                viewModel.exchangeZerodhaToken(token) { result ->
+                    isExchangingKite = false
+                    if (result.isSuccess) {
+                        activeConnectBroker = null
+                        onShowToast("Zerodha connected successfully!")
+                    } else {
+                        kiteError = result.exceptionOrNull()?.message ?: "Token exchange failed"
+                    }
+                }
+            },
+        )
     }
 }

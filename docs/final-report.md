@@ -118,7 +118,7 @@ All 14 core requirements (**R1 through R14**) have been verified as **PASS** wit
 ## 6. Release Engineering & Build Artifacts
 
 ### 6.1 Release Signing Keystore
-- **Location:** `C:\Users\Varshith Tadiparthi\.android\investment_tracker_release.jks` (kept strictly **OUTSIDE** the git repository in user's home directory).
+- **Location:** `~/.android/investment_tracker_release.jks` (kept strictly **OUTSIDE** the git repository in user's home directory).
 - **Key Parameters:** RSA 2048-bit, self-signed certificate, 10,000 days validity.
 - **Gradle Integration:** `app/build.gradle.kts` dynamically reads `RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD` with local fallback to `~/.android/investment_tracker_release.jks`.
 

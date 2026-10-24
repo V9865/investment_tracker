@@ -26,6 +26,7 @@ class KotakReadOnlyAllowListInterceptor : Interceptor {
         if (!method.equals("GET", ignoreCase = true)) return false
         val normalizedPath = path.trimEnd('/')
         return normalizedPath == "/portfolio/holdings" ||
+            normalizedPath == "/portfolio/v1/holdings" ||
             normalizedPath == "/holdings" ||
             normalizedPath == "/portfolio/positions"
     }

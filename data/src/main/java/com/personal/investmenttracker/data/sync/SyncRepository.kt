@@ -175,6 +175,11 @@ class SyncRepository
                 )
             }
 
+        fun clearBroker(broker: Broker) {
+            holdingDao.deleteByBroker(broker.name)
+            brokerConnectionDao.deleteByBroker(broker.name)
+        }
+
         fun resolveOrCreateListing(
             isin: String,
             exchange: Exchange,

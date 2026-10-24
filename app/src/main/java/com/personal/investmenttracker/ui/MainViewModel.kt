@@ -56,6 +56,12 @@ class MainViewModel
         private val sortOptionState = MutableStateFlow(HoldingsSortOption.VALUE_DESC)
         private val flagSecureState = MutableStateFlow(sessionLockManager.isFlagSecureEnabled)
 
+        init {
+            viewModelScope.launch {
+                syncAll()
+            }
+        }
+
         val lockState: StateFlow<LockState> = sessionLockManager.lockState
 
         val dashboardState: StateFlow<DashboardUiState> =
@@ -263,21 +269,16 @@ class MainViewModel
             viewModelScope.launch {
                 val result = zerodhaProvider.exchangeToken(tokenOrUrl)
                 if (result.isSuccess) {
+                    if (!kotakCredentialsRepo.hasCredentials()) {
+                        syncRepository.clearBroker(Broker.KOTAK_NEO)
+                    }
                     syncAll()
                 }
                 onResult(result)
             }
         }
 
-        fun getKotakAccessToken(): String? = kotakCredentialsRepo.getAccessToken()
-
-        fun getKotakSid(): String? = kotakCredentialsRepo.getSid()
-
-        fun saveKotakCredentials(
-            accessToken: String,
-            sid: String?,
-        ) {
-            kotakCredentialsRepo.saveCredentials(accessToken = accessToken, sid = sid)
+        fun syncKotak() {
             syncAll()
         }
 
@@ -292,9 +293,12 @@ class MainViewModel
         }
 
         fun disconnectBroker(broker: Broker) {
-            when (broker) {
-                Broker.ZERODHA -> kiteCredentialsRepo.clearAll()
-                Broker.KOTAK_NEO -> kotakCredentialsRepo.clearCredentials()
+            viewModelScope.launch {
+                when (broker) {
+                    Broker.ZERODHA -> kiteCredentialsRepo.clearAll()
+                    Broker.KOTAK_NEO -> kotakCredentialsRepo.clearCredentials()
+                }
+                syncRepository.clearBroker(broker)
             }
         }
 
@@ -302,5 +306,7 @@ class MainViewModel
             sessionLockManager.resetDataAndResync(masterKeyManager)
             kiteCredentialsRepo.clearAll()
             kotakCredentialsRepo.clearCredentials()
+            syncRepository.clearBroker(Broker.ZERODHA)
+            syncRepository.clearBroker(Broker.KOTAK_NEO)
         }
     }

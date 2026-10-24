@@ -117,6 +117,16 @@ class SyncOrchestrator
         }
 
         private suspend fun executeZerodhaSync(startedAt: Long): BrokerSyncResult {
+            if (!zerodhaProvider.hasCredentials()) {
+                return BrokerSyncResult(
+                    broker = Broker.ZERODHA,
+                    status =
+                        SyncStatus.Failure(
+                            error = "Zerodha is not configured",
+                            lastGoodDataRetained = true,
+                        ),
+                )
+            }
             val result = zerodhaProvider.fetchHoldings()
             return result.fold(
                 onSuccess = { holdings ->
@@ -150,6 +160,16 @@ class SyncOrchestrator
         }
 
         private suspend fun executeKotakSync(startedAt: Long): BrokerSyncResult {
+            if (!kotakProvider.hasCredentials()) {
+                return BrokerSyncResult(
+                    broker = Broker.KOTAK_NEO,
+                    status =
+                        SyncStatus.Failure(
+                            error = "Kotak Neo is not configured",
+                            lastGoodDataRetained = true,
+                        ),
+                )
+            }
             val result = kotakProvider.fetchHoldings()
             return result.fold(
                 onSuccess = { holdings ->

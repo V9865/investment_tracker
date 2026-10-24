@@ -24,6 +24,9 @@ interface BrokerConnectionDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun upsert(entity: BrokerConnectionEntity)
+
+    @Query("DELETE FROM broker_connection WHERE broker = :broker")
+    fun deleteByBroker(broker: String)
 }
 
 @Dao
@@ -81,6 +84,9 @@ interface HoldingDao {
 
     @Query("DELETE FROM holding")
     fun deleteAll()
+
+    @Query("DELETE FROM holding WHERE broker = :broker")
+    fun deleteByBroker(broker: String)
 }
 
 @Dao

@@ -39,7 +39,7 @@
   - Name: Android Studio
   - Version / Build: `AI-262.9437.185.2621.16467767`
   - Data Directory: `AndroidStudio2026.2.1`
-- **Android SDK Path:** `C:\Users\Varshith Tadiparthi\AppData\Local\Android\Sdk`
+- **Android SDK Path:** `~/AppData/Local/Android/Sdk`
   - Platforms: `android-37.0`
   - Build-Tools: `36.0.0`
   - Command-Line Tools: `latest`

@@ -230,7 +230,7 @@
 ### 13. Audit & Release Engineering (Prompt 08)
 - **Date:** 2026-10-22
 - **Keystore Separation:**
-  - In accordance with production security invariants, the release signing keystore is created and maintained strictly **OUTSIDE** the git repository (`C:\Users\Varshith Tadiparthi\.android\investment_tracker_release.jks`).
+  - In accordance with production security invariants, the release signing keystore is created and maintained strictly **OUTSIDE** the git repository (`~/.android/investment_tracker_release.jks`).
   - Gradle signing configuration dynamically pulls credentials via environment variables (`RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`) with secure fallback for local build convenience.
 - **R8 ProGuard & Logging Policy:**
   - `isMinifyEnabled = true` and `isShrinkResources = true` enabled on release builds.
@@ -248,6 +248,27 @@
   - [Android App Signing Guidance](https://developer.android.com/studio/publish/app-signing)
   - [R8 Code Shrinking & Obfuscation](https://developer.android.com/build/shrink-code)
   - [Data Extraction Rules Reference](https://developer.android.com/guide/topics/data/autobackup#xml-syntax)
+
+## Architecture Decision 09 - Semi-Automatic Kotak Neo Integration & Real-Device Flow Stabilization
+- **Context:**
+  - Kotak Neo Trade API v2 officially mandates a registered static IP for server-to-server automated TOTP/MPIN endpoints. Running automated headless login on a mobile device whose IP changes across cellular towers and Wi-Fi causes HTTP 403 / IP rejections.
+  - To maintain a 100% private, zero-cost, serverless Android application without external relays, Kotak provides the Trade API web portal (`trade.kotakneo.com/trade-api`) where users authenticate directly with Kotak and obtain an authorized JWT session token valid for the trading day.
+- **Decision:**
+  - Implemented the **Semi-Automatic (Portal Token)** integration:
+    - Added a 1-tap launcher in `ConnectKotakDialog.kt` ("1. Open Kotak Trade Portal") invoking `CustomTabsIntent` (`https://trade.kotakneo.com/trade-api`).
+    - The dialog guides the user through the 2-step process: (1) Open portal and authenticate with Kotak, (2) Paste the generated Access Token (SID optional) and tap "2. Save & Sync Kotak Portfolio".
+    - `KotakApiService.kt` and `LiveKotakProvider.kt` send standard Kotak Trade API headers (`Authorization: Bearer <token>`, `Auth: <cleanToken>`, `neo-fin-key: neotradeapi`, optional `Sid`), with graceful endpoint fallback (`/portfolio/holdings` and `/portfolio/v1/holdings`).
+    - `KotakReadOnlyAllowListInterceptor.kt` permits `/portfolio/v1/holdings` while continuing to strictly block all order, mutation, fund, and position conversion endpoints.
+  - **Live Portfolio Valuation:**
+    - Updated `PortfolioCalculator.kt` to prioritize `quote.price` (live market LTP) over `closePrice` (yesterday's close) for calculating current portfolio valuations.
+  - **Persistent Local Database & Auto-Boot Sync:**
+    - Transitioned `provideAppDatabase` in `DataModule.kt` to a persistent SQLite database (`AppDatabase.DATABASE_NAME`) with `.allowMainThreadQueries()`. Holdings persist reliably across app kills and reboots.
+    - Updated `MainViewModel.init` to automatically trigger `syncAll()` on startup if either Zerodha or Kotak has stored credentials.
+  - **Auto-Lock on Background:**
+    - Bound `onStop()` in `MainActivity.kt` directly to `viewModel.onAppBackgrounded()`, enforcing immediate session locking whenever the app is minimized or backgrounded.
+- **Verification & Acceptance:**
+    - Full quality gate pass: `test`, `ktlintCheck`, `detekt`.
+    - Live Release APK built and installed to Motorola hardware device `ZF6226VTTV` via ADB. Process running cleanly with 0 crashes.
 
 
 

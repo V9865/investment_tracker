@@ -111,7 +111,7 @@ object PortfolioCalculator {
                 holding.quantity * holding.avgPriceReported!!
             }
 
-        val effectivePrice = quote?.closePrice ?: quote?.price
+        val effectivePrice = quote?.price ?: quote?.closePrice
         val currentValue = effectivePrice?.let { holding.quantity * it }
         val unrealizedPnl = PnlMath.computeUnrealized(currentValue, costBasis)
         val unrealizedPnlPercent = PnlMath.computeUnrealizedPct(unrealizedPnl, costBasis)
@@ -152,7 +152,7 @@ object PortfolioCalculator {
             }
 
         val quote = groupHoldings.mapNotNull { it.quote }.firstOrNull()
-        val effectivePrice = quote?.closePrice ?: quote?.price
+        val effectivePrice = quote?.price ?: quote?.closePrice
         val totalCurrentValue = effectivePrice?.let { totalQty * it }
         val unrealizedPnl = PnlMath.computeUnrealized(totalCurrentValue, totalCostBasis)
         val unrealizedPercent = PnlMath.computeUnrealizedPct(unrealizedPnl, totalCostBasis)

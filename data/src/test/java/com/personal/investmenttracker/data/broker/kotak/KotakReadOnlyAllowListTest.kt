@@ -54,7 +54,7 @@ class KotakReadOnlyAllowListTest {
 
     @Test
     fun getHoldingsVariants_areAllowed() {
-        val paths = listOf("/holdings", "/portfolio/positions")
+        val paths = listOf("/portfolio/v1/holdings", "/holdings", "/portfolio/positions")
         for (path in paths) {
             mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody("""{"stat":"Ok","data":[]}"""))
             val request =

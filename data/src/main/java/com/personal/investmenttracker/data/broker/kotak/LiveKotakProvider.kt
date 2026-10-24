@@ -27,9 +27,28 @@ class LiveKotakProvider(
 
     private suspend fun executeHoldingsCall(token: String): Result<List<Pair<Holding, Quote>>> =
         try {
-            val sid = credentialsRepo.getSid()
-            val authHeader = if (token.startsWith("Bearer ")) token else "Bearer $token"
-            val response = apiService.getHoldings(authHeader, sid)
+            val sid = credentialsRepo.getSid()?.trim()?.ifEmpty { null }
+            val cleanToken = token.trim().removePrefix("Bearer ").trim()
+            val authHeader = "Bearer $cleanToken"
+
+            val response =
+                try {
+                    apiService.getHoldings(
+                        authorization = authHeader,
+                        auth = cleanToken,
+                        sid = sid,
+                    )
+                } catch (e: HttpException) {
+                    if (e.code() == 404) {
+                        apiService.getHoldingsV1(
+                            authorization = authHeader,
+                            auth = cleanToken,
+                            sid = sid,
+                        )
+                    } else {
+                        throw e
+                    }
+                }
             isSessionExpiredState = false
             val domainHoldings = KotakHoldingsMapper.mapAllToDomain(response.data)
             Result.success(domainHoldings)

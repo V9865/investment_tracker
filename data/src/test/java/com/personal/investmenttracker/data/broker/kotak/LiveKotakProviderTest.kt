@@ -101,6 +101,8 @@ class LiveKotakProviderTest {
             val recorded = mockWebServer.takeRequest()
             assertEquals("/portfolio/holdings", recorded.path)
             assertEquals("Bearer mock_access_token_from_web", recorded.getHeader("Authorization"))
+            assertEquals("mock_access_token_from_web", recorded.getHeader("Auth"))
+            assertEquals("neotradeapi", recorded.getHeader("neo-fin-key"))
             assertEquals("mock_sid_value", recorded.getHeader("Sid"))
             assertFalse(provider.isSessionExpired())
         }

@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package com.personal.investmenttracker.data.broker.kotak
 
 import com.personal.investmenttracker.domain.model.Broker
@@ -61,12 +63,20 @@ private data class KotakColumnIndices(
     val avgPriceIndex: Int,
     val ltpIndex: Int,
     val closePriceIndex: Int,
+    val todayPnlPctIndex: Int = -1,
+    val todayPnlIndex: Int = -1,
 )
 
 private fun findHeaderRowIndex(lines: List<String>): Int {
     for (i in lines.indices) {
         val lower = lines[i].lowercase()
-        val hasSymbolOrIsin = lower.contains("symbol") || lower.contains("isin") || lower.contains("scrip")
+        val hasSymbolOrIsin =
+            lower.contains("symbol") ||
+                lower.contains("isin") ||
+                lower.contains("scrip") ||
+                lower.contains("name") ||
+                lower.contains("instrument") ||
+                lower.contains("stock")
         val hasQty = lower.contains("qty") || lower.contains("quantity") || lower.contains("holding")
         if (hasSymbolOrIsin && hasQty) {
             return i
@@ -110,12 +120,18 @@ private fun matchHeaderIndex(
 
 private fun resolveColumnIndices(headers: List<String>): KotakColumnIndices {
     val isinIdx = matchHeaderIndex(headers, listOf("isin"))
-    val symbolIdx = matchHeaderIndex(headers, listOf("symbol", "scrip"))
+    val symbolIdx = matchHeaderIndex(headers, listOf("symbol", "scrip", "name", "instrument", "stock"))
     val exchangeIdx = matchHeaderIndex(headers, listOf("exchange"))
     val qtyIdx = matchHeaderIndex(headers, listOf("qty", "quantity", "holding"))
     val avgPriceIdx = matchHeaderIndex(headers, listOf("avg", "average", "buyprice", "cost"))
     val ltpIdx = matchHeaderIndex(headers, listOf("ltp", "lastprice", "currentprice"))
     val closePriceIdx = matchHeaderIndex(headers, listOf("close", "prevclose"))
+    val todayPnlPctIdx =
+        matchHeaderIndex(
+            headers,
+            listOf("todaysprofit/loss%", "todaypnl%", "todaypnlpct", "daychange%"),
+        )
+    val todayPnlIdx = matchHeaderIndex(headers, listOf("todaysprofit/loss", "todaypnl", "daychange"))
 
     if (symbolIdx == -1 && isinIdx == -1) {
         throw KotakFileImportException("Missing symbol and ISIN column in exported file.")
@@ -124,7 +140,17 @@ private fun resolveColumnIndices(headers: List<String>): KotakColumnIndices {
         throw KotakFileImportException("Missing quantity column in exported file.")
     }
 
-    return KotakColumnIndices(isinIdx, symbolIdx, exchangeIdx, qtyIdx, avgPriceIdx, ltpIdx, closePriceIdx)
+    return KotakColumnIndices(
+        isinIndex = isinIdx,
+        symbolIndex = symbolIdx,
+        exchangeIndex = exchangeIdx,
+        qtyIndex = qtyIdx,
+        avgPriceIndex = avgPriceIdx,
+        ltpIndex = ltpIdx,
+        closePriceIndex = closePriceIdx,
+        todayPnlPctIndex = todayPnlPctIdx,
+        todayPnlIndex = todayPnlIdx,
+    )
 }
 
 private fun extractQuantity(
@@ -143,12 +169,43 @@ private fun extractSymbolAndIsin(
     row: List<String>,
     indices: KotakColumnIndices,
 ): Pair<String, String>? {
-    val rawSymbol = if (indices.symbolIndex in row.indices) row[indices.symbolIndex] else ""
-    val rawIsin = if (indices.isinIndex in row.indices) row[indices.isinIndex] else ""
-    if (rawSymbol.isBlank() && rawIsin.isBlank()) return null
+    val rawSymbol = if (indices.symbolIndex in row.indices) row[indices.symbolIndex].trim() else ""
+    val rawIsin = if (indices.isinIndex in row.indices) row[indices.isinIndex].trim() else ""
+    val isInvalid =
+        (rawSymbol.isBlank() && rawIsin.isBlank()) ||
+            rawSymbol.equals("total", ignoreCase = true) ||
+            rawSymbol.equals("-", ignoreCase = true)
+    if (isInvalid) return null
     val effectiveIsin = if (rawIsin.isNotBlank()) rawIsin else rawSymbol
     val effectiveSymbol = if (rawSymbol.isNotBlank()) rawSymbol else rawIsin
     return Pair(effectiveSymbol, effectiveIsin)
+}
+
+private fun computeClosePrice(
+    row: List<String>,
+    indices: KotakColumnIndices,
+    ltpMoney: Money,
+): Money {
+    val directClose = parseMoneyOrNull(row, indices.closePriceIndex)
+    if (directClose != null) return directClose
+
+    val pctVal =
+        if (indices.todayPnlPctIndex in row.indices) {
+            parsePercentValue(row[indices.todayPnlPctIndex])
+        } else {
+            null
+        }
+
+    return if (ltpMoney.amount > BigDecimal.ZERO && pctVal != null) {
+        val factor = BigDecimal.ONE.add(pctVal.divide(BigDecimal("100"), 6, java.math.RoundingMode.HALF_UP))
+        if (factor.compareTo(BigDecimal.ZERO) > 0) {
+            Money(ltpMoney.amount.divide(factor, 2, java.math.RoundingMode.HALF_UP))
+        } else {
+            ltpMoney
+        }
+    } else {
+        ltpMoney
+    }
 }
 
 private fun parseRow(
@@ -166,7 +223,8 @@ private fun parseRow(
     val isBse = indices.exchangeIndex in row.indices && row[indices.exchangeIndex].contains("BSE", ignoreCase = true)
     val exchange = if (isBse) Exchange.BSE else Exchange.NSE
     val ltpMoney = parseMoneyOrNull(row, indices.ltpIndex) ?: Money.ZERO
-    val closePriceMoney = parseMoneyOrNull(row, indices.closePriceIndex) ?: ltpMoney
+    val closePriceMoney = computeClosePrice(row, indices, ltpMoney)
+
     val quote =
         Quote(
             price = ltpMoney,
@@ -204,6 +262,14 @@ private fun parseMoneyOrNull(
         null
     }
 }
+
+private fun parsePercentValue(value: String): BigDecimal? =
+    try {
+        val clean = cleanNumeric(value)
+        if (clean.isBlank()) null else BigDecimal(clean)
+    } catch (_: NumberFormatException) {
+        null
+    }
 
 private fun cleanNumeric(value: String): String =
     value

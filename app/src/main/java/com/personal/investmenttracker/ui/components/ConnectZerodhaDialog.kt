@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.Visibility
@@ -38,14 +39,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-@Suppress("LongParameterList")
 fun ConnectZerodhaDialog(
     initialApiKey: String,
     initialApiSecret: String,
-    onDismiss: () -> Unit,
-    onSaveCredentials: (apiKey: String, apiSecret: String) -> Unit,
-    onOpenLoginUrl: (apiKey: String) -> Unit,
-    onExchangeToken: (tokenOrUrl: String) -> Unit,
+    actions: ConnectZerodhaActions,
     isExchanging: Boolean = false,
     errorMessage: String? = null,
 ) {
@@ -55,7 +52,7 @@ fun ConnectZerodhaDialog(
     var showSecret by remember { mutableStateOf(false) }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = actions.onDismiss,
         title = {
             Text(
                 text = "Connect Zerodha Kite",
@@ -77,8 +74,7 @@ fun ConnectZerodhaDialog(
                     onApiSecretChange = { apiSecret = it },
                     showSecret = showSecret,
                     onToggleSecret = { showSecret = !showSecret },
-                    onSaveCredentials = onSaveCredentials,
-                    onOpenLoginUrl = onOpenLoginUrl,
+                    actions = actions,
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -88,18 +84,26 @@ fun ConnectZerodhaDialog(
                     onTokenChange = { requestTokenOrUrl = it },
                     errorMessage = errorMessage,
                     isExchanging = isExchanging,
-                    onExchange = { onExchangeToken(requestTokenOrUrl.trim()) },
+                    onExchange = { actions.onExchangeToken(requestTokenOrUrl.trim()) },
                 )
             }
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = actions.onDismiss) {
                 Text("Close")
             }
         },
     )
 }
+
+data class ConnectZerodhaActions(
+    val onDismiss: () -> Unit,
+    val onSaveCredentials: (apiKey: String, apiSecret: String) -> Unit,
+    val onOpenInAppLogin: (apiKey: String) -> Unit,
+    val onOpenExternalBrowser: (apiKey: String) -> Unit,
+    val onExchangeToken: (tokenOrUrl: String) -> Unit,
+)
 
 @Composable
 @Suppress("LongParameterList")
@@ -110,8 +114,7 @@ private fun KiteCredentialsSection(
     onApiSecretChange: (String) -> Unit,
     showSecret: Boolean,
     onToggleSecret: () -> Unit,
-    onSaveCredentials: (String, String) -> Unit,
-    onOpenLoginUrl: (String) -> Unit,
+    actions: ConnectZerodhaActions,
 ) {
     Text(
         text = "Enter your Kite Developer credentials. Keys are saved in hardware-backed storage.",
@@ -156,9 +159,18 @@ private fun KiteCredentialsSection(
 
     Spacer(modifier = Modifier.height(12.dp))
 
+    KiteLoginButtons(apiKey = apiKey, apiSecret = apiSecret, actions = actions)
+}
+
+@Composable
+private fun KiteLoginButtons(
+    apiKey: String,
+    apiSecret: String,
+    actions: ConnectZerodhaActions,
+) {
     Row(modifier = Modifier.fillMaxWidth()) {
         OutlinedButton(
-            onClick = { onSaveCredentials(apiKey.trim(), apiSecret.trim()) },
+            onClick = { actions.onSaveCredentials(apiKey.trim(), apiSecret.trim()) },
             enabled = apiKey.isNotBlank() && apiSecret.isNotBlank(),
             modifier = Modifier.weight(1f),
         ) {
@@ -171,16 +183,35 @@ private fun KiteCredentialsSection(
 
         Button(
             onClick = {
-                onSaveCredentials(apiKey.trim(), apiSecret.trim())
-                onOpenLoginUrl(apiKey.trim())
+                actions.onSaveCredentials(apiKey.trim(), apiSecret.trim())
+                actions.onOpenInAppLogin(apiKey.trim())
             },
             enabled = apiKey.isNotBlank(),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1.3f),
         ) {
-            Icon(imageVector = Icons.Default.OpenInBrowser, contentDescription = null, modifier = Modifier.size(16.dp))
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Login,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
             Spacer(modifier = Modifier.size(4.dp))
-            Text("Login", fontSize = 12.sp)
+            Text("Login (In-App)", fontSize = 12.sp)
         }
+    }
+
+    Spacer(modifier = Modifier.height(6.dp))
+
+    OutlinedButton(
+        onClick = {
+            actions.onSaveCredentials(apiKey.trim(), apiSecret.trim())
+            actions.onOpenExternalBrowser(apiKey.trim())
+        },
+        enabled = apiKey.isNotBlank(),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Icon(imageVector = Icons.Default.OpenInBrowser, contentDescription = null, modifier = Modifier.size(16.dp))
+        Spacer(modifier = Modifier.size(4.dp))
+        Text("Or Open in Chrome / Browser", fontSize = 11.sp)
     }
 }
 
@@ -198,7 +229,7 @@ private fun KiteTokenExchangeSection(
         style = MaterialTheme.typography.bodyMedium,
     )
     Text(
-        text = "After authenticating on Zerodha, paste the redirected URL or request_token below:",
+        text = "If using external browser or manual capture, paste redirected URL or request_token below:",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
